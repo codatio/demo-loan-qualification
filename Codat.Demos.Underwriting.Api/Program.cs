@@ -1,5 +1,4 @@
 using Codat.Demos.Underwriting.Api;
-using Codat.Demos.Underwriting.Api.Helpers;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,8 +17,6 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
-
-StartupHelper.SetupCodatWebhooks(app);
 
 app.UseSwagger();
 app.UseSwaggerUI();
