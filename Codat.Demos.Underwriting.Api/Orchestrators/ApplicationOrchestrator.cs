@@ -112,10 +112,6 @@ public class ApplicationOrchestrator : IApplicationOrchestrator
 
     public async Task UpdateAccountCategorisationStatusAsync(CodatAccountCategorisationAlert alert)
     {
-        //The webhook sent by codat is pretty useless as it provides little context on what has changed.
-        //i.e. if all categories have been successfully categorised or there are N accounts requiring manual intervention.
-        //Work around is to retrieve the metrics and check for that no UncategorisedAccount errors exist.
-
         var application = _applicationStore.GetApplicationByCompanyId(alert.CompanyId);
 
         //Easiest way to check if the accounts are classified is to call the financial metrics endpoint!

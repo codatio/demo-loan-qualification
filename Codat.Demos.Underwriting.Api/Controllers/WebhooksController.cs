@@ -7,11 +7,11 @@ namespace Codat.Demos.Underwriting.Api.Controllers;
 
 [ApiController]
 [Route("webhooks/codat/")]
-public class WebhookController : ControllerBase
+public class WebhooksController : ControllerBase
 {
     private readonly IApplicationOrchestrator _applicationOrchestrator;
     
-    public WebhookController(IApplicationOrchestrator orchestrator)
+    public WebhooksController(IApplicationOrchestrator orchestrator)
     {
         _applicationOrchestrator = orchestrator;
     }

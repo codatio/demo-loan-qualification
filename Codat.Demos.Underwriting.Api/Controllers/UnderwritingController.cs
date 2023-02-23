@@ -17,9 +17,15 @@ public class UnderwritingController : ControllerBase
         _applicationOrchestrator = applicationOrchestrator;
     }
     
+    /// <summary>
+    /// Start a new loan application.
+    /// </summary>
+    /// <returns>A new application ID and codat company ID.</returns>
     [HttpGet]
     [Route("start")]
-    public async Task<IActionResult> StartApplicationAsync()
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(ApplicationForm), 200)]
+    public async Task<OkObjectResult> StartApplicationAsync()
     {
         var applicationForm = await _applicationOrchestrator.CreateApplicationAsync();
         return Ok(applicationForm);
@@ -73,7 +79,7 @@ public class UnderwritingController : ControllerBase
            form.FullName.IsNotNullOrWhitespace() &&
            form.LoanPurpose.IsNotNullOrWhitespace() &&
            form.LoanAmount is > 0M &&
-           form.LoanTerm is > 12;
+           form.LoanTerm is >= 12;
     
     private record ErrorResponse(string Message);
 }
