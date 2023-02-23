@@ -12,12 +12,6 @@ public interface ICodatDataClient
     Task<FinancialMetrics> GetPreviousTwelveMonthsMetricsAsync(Guid companyId, Guid dataConnectionId, DateTime reportDate);
     Task<Report> GetPreviousTwelveMonthsEnhancedProfitAndLossAsync(Guid companyId, Guid dataConnectionId, DateTime reportDate);
     Task<Report> GetPreviousTwelveMonthsEnhancedBalanceSheetAsync(Guid companyId, Guid dataConnectionId, DateTime reportDate);
-
-    #region Specific set up endpoints for posting webhooks.
-    Task<Rule> CreateWebhookRuleAsync(string ruleType, string webhookUrl);
-    Task TryDeleteRuleAsync(Guid id);
-    #endregion
-    
 }
 
 public class CodatDataClient : ICodatDataClient
@@ -116,45 +110,4 @@ public class CodatDataClient : ICodatDataClient
             throw new CodatDataClientException("Json object is null");
         }
     }
-    
-    #region Specific set up endpoints for posting webhooks.
-    
-    public async Task<Rule> CreateWebhookRuleAsync(string ruleType, string webhookUrl)
-    {
-        var ruleRequest = new Rule
-        {
-            Type = ruleType,
-            Notifiers = new()
-            {
-                Webhook = webhookUrl
-            }
-        };
-        
-        var response = await Client.PostAsJsonAsync("/rules", ruleRequest);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            ThrowDataClientExceptionForHttpResponse(response);
-        }
-        
-        var ruleCreated = await response.Content.ReadFromJsonAsync<Rule>();
-        return ruleCreated!;
-    }
-
-    public async Task TryDeleteRuleAsync(Guid id)
-    {
-        var response = await Client.DeleteAsync($"rules/{id}");
-
-        if (response.StatusCode == HttpStatusCode.NotFound)
-        {
-            return;
-        }
-        
-        if (!response.IsSuccessStatusCode)
-        {
-            ThrowDataClientExceptionForHttpResponse(response);
-        }
-    }
-    
-    #endregion
 }
