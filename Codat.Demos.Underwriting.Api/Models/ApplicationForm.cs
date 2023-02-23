@@ -24,11 +24,11 @@ public enum ApplicationDataRequirements
 
 public record ApplicationForm
 {
-    //Add loan purpose
-    //remove ratios endpoint
-    //front and back of house. 
     public Guid Id { get; init; }
+
+    [JsonIgnore]
     public DateTime DateCreated { get; } = DateTime.UtcNow.Date;
+    
     public Guid CodatCompanyId { get; init; }
     public ApplicationStatus Status { get; init; }
     public string CompanyName { get; init; }
