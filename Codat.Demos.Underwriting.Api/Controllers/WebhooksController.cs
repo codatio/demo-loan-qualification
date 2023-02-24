@@ -16,8 +16,13 @@ public class WebhooksController : ControllerBase
         _applicationOrchestrator = orchestrator;
     }
     
+    /// <summary>
+    /// Webhook receiver listening to completed syncs events for each data type (Rule name: Data sync completed).
+    /// </summary>
+    /// <response code="200">Successfully processed webhook.</response>
     [HttpPost]
     [Route("datatype-sync-complete")]
+    [ProducesResponseType(200)]
     public async Task<IActionResult> NotificationOfDataTypeSyncCompleteAsync([FromBody]CodatDataSyncCompleteAlert alert)
     {
         Console.WriteLine("datatype-sync-complete");
@@ -27,8 +32,13 @@ public class WebhooksController : ControllerBase
         return Ok();
     }
     
+    /// <summary>
+    /// Webhook receiver listening to changes to data connections (Rule name: Company Data Connection status has changed).
+    /// </summary>
+    /// <response code="200">Successfully processed webhook.</response>
     [HttpPost]
     [Route("data-connection-status")]
+    [ProducesResponseType(200)]
     public async Task<IActionResult> NotificationOfDataConnectionStatusChangeAsync([FromBody]CodatDataConnectionStatusAlert alert)
     {
         Console.WriteLine("data-connection-status");
@@ -38,8 +48,13 @@ public class WebhooksController : ControllerBase
         return Ok();
     }
     
+    /// <summary>
+    /// Webhook receiver listening to updates to account categorisation (Rule name: Account categories updated).
+    /// </summary>
+    /// <response code="200">Successfully processed webhook.</response>
     [HttpPost]
     [Route("account-categorisation-update")]
+    [ProducesResponseType(200)]
     public async Task<IActionResult> NotificationOfAccountCategorisationUpdatedAsync([FromBody]CodatAccountCategorisationAlert alert)
     {
         Console.WriteLine("account-categorisation-update");

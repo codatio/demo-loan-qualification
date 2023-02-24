@@ -9,7 +9,7 @@ namespace Codat.Demos.Underwriting.Api.Tests.Services;
 public class ApplicationStoreTests
 {
     private readonly ApplicationStore _applicationStore = new();
-    private readonly ApplicationForm _applicationForm = new(){
+    private readonly Application _applicationForm = new(){
         Id = Guid.NewGuid(),
         CodatCompanyId = Guid.NewGuid(),
         Status = ApplicationStatus.Started
@@ -53,18 +53,15 @@ public class ApplicationStoreTests
     [Fact]
     public void SetApplicationDetails_sets_expected_fields()
     {
+        var form = GetApplicationForm();
         var expectation = _applicationForm with
         {
-            CompanyName = "Company Name",
-            FullName = "First Last",
-            LoanAmount = 10000M,
-            LoanTerm = 36,
-            LoanPurpose = "Growth marketing",
+            Form = form,
             Status = ApplicationStatus.Started
         };
         
         _applicationStore.CreateApplication(_applicationForm.Id, _applicationForm.CodatCompanyId);
-        _applicationStore.SetApplicationDetails(_applicationForm.Id, expectation.CompanyName, expectation.FullName, expectation.LoanPurpose, expectation.LoanAmount.Value, expectation.LoanTerm.Value);
+        _applicationStore.SetApplicationForm(_applicationForm.Id, form);
         var application = _applicationStore.GetApplication(_applicationForm.Id);
         application.Should().BeEquivalentTo(expectation);
     }
@@ -115,28 +112,34 @@ public class ApplicationStoreTests
         var application = _applicationStore.GetApplication(_applicationForm.Id);
         application.Should().BeEquivalentTo(expectation);
 
+        var form = GetApplicationForm();
         expectation = expectation with
+        {
+            Form = form
+        };
+        
+        _applicationStore.SetApplicationForm(_applicationForm.Id, form);
+        application = _applicationStore.GetApplication(_applicationForm.Id);
+        application.Should().BeEquivalentTo(expectation);
+        
+        expectation = expectation with
+        {
+            AccountingConnection = Guid.NewGuid()
+        };
+        
+        _applicationStore.SetAccountingConnectionForCompany(_applicationForm.CodatCompanyId, expectation.AccountingConnection.Value);
+        
+        application = _applicationStore.GetApplication(_applicationForm.Id);
+        application.Should().BeEquivalentTo(expectation);
+    }
+    
+    private static ApplicationForm GetApplicationForm() 
+        => new()
         {
             CompanyName = "Company Name",
             FullName = "First Last",
             LoanAmount = 10000M,
             LoanTerm = 36,
-            LoanPurpose = "Growth marketing",
-            Status = ApplicationStatus.Started
+            LoanPurpose = "Growth marketing"
         };
-        
-        _applicationStore.SetApplicationDetails(_applicationForm.Id, expectation.CompanyName, expectation.FullName, expectation.LoanPurpose, expectation.LoanAmount.Value, expectation.LoanTerm.Value);
-        application = _applicationStore.GetApplication(_applicationForm.Id);
-        application.Should().BeEquivalentTo(expectation);
-        
-        expectation = expectation with
-        {
-            AccountingConnection = new DataConnection{ Id = Guid.NewGuid() }
-        };
-        
-        _applicationStore.SetAccountingConnectionForCompany(_applicationForm.CodatCompanyId, expectation.AccountingConnection.Id);
-        
-        application = _applicationStore.GetApplication(_applicationForm.Id);
-        application.Should().BeEquivalentTo(expectation);
-    }
 }

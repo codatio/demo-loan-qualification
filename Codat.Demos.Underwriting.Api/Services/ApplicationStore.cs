@@ -5,42 +5,38 @@ namespace Codat.Demos.Underwriting.Api.Services;
 
 public interface IApplicationStore
 {
-    ApplicationForm CreateApplication(Guid applicationId, Guid codatCompanyId);
-    ApplicationForm GetApplication(Guid id);
-    void SetApplicationDetails(Guid applicationId, string companyName, string fullName, string loanPurpose, decimal loanAmount, int loanTerm);
+    NewApplicationDetails CreateApplication(Guid applicationId, Guid codatCompanyId);
+    Application GetApplication(Guid id);
+    void SetApplicationForm(Guid applicationId, ApplicationForm form);
     ApplicationStatus GetApplicationStatus(Guid id);
     void UpdateApplicationStatus(Guid id, ApplicationStatus status);
     void SetAccountingConnectionForCompany(Guid companyId, Guid dataConnectionId);
-    ApplicationForm GetApplicationByCompanyId(Guid companyId);
+    Application GetApplicationByCompanyId(Guid companyId);
     void AddFulfilledRequirement(Guid id, ApplicationDataRequirements requirement);
     void AddFulfilledRequirementForCompany(Guid companyId, ApplicationDataRequirements requirement);
 }
 
 public class ApplicationStore : IApplicationStore
 {
-    private readonly Dictionary<Guid, ApplicationForm> _data = new();
-    public ApplicationForm CreateApplication(Guid applicationId, Guid codatCompanyId)
+    private readonly Dictionary<Guid, Application> _data = new();
+    public NewApplicationDetails CreateApplication(Guid applicationId, Guid codatCompanyId)
     {
-        var applicationForm = new ApplicationForm { Id = applicationId, CodatCompanyId = codatCompanyId, Status = ApplicationStatus.Started };
+        var applicationForm = new Application { Id = applicationId, CodatCompanyId = codatCompanyId, Status = ApplicationStatus.Started };
         _data.Add(applicationForm.Id, applicationForm);
         return applicationForm;
     }
 
-    public void SetApplicationDetails(Guid applicationId, string companyName, string fullName, string loanPurpose, decimal loanAmount, int loanTerm)
+    public void SetApplicationForm(Guid applicationId, ApplicationForm form)
     {
         var application = GetApplication(applicationId);
         
         _data[application.Id] = application with
         {
-            CompanyName = companyName,
-            FullName = fullName,
-            LoanPurpose = loanPurpose,
-            LoanAmount = loanAmount,
-            LoanTerm = loanTerm
+            Form = form
         };
     }
 
-    public ApplicationForm GetApplication(Guid id)
+    public Application GetApplication(Guid id)
         => _data.TryGetValue(id, out var result) ? result : throw new ApplicationStoreException($"No application exists with id {id}");
     
     public ApplicationStatus GetApplicationStatus(Guid id)
@@ -52,7 +48,7 @@ public class ApplicationStore : IApplicationStore
 
         _data[application.Id] = application with
         {
-            AccountingConnection = new DataConnection { Id = dataConnectionId }
+            AccountingConnection = dataConnectionId
         };
     }
     
@@ -65,7 +61,7 @@ public class ApplicationStore : IApplicationStore
         };
     }
 
-    public ApplicationForm GetApplicationByCompanyId(Guid companyId)
+    public Application GetApplicationByCompanyId(Guid companyId)
     {
         var applicationForm = _data.Values.FirstOrDefault(x => x.CodatCompanyId == companyId);
         if (applicationForm is null)

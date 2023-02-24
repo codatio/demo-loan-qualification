@@ -33,7 +33,7 @@ public static class BindingModule
         var apiKeyParam = "AppSettings:CodatApiKey";
         var apiKey = configuration.GetSection(apiKeyParam).Value;
 
-        if (apiKey.IsNullOrWhitespace())
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             throw new ConfigurationMissingException(apiKeyParam);
         }
