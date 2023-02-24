@@ -18,11 +18,9 @@ public class ApplicationOrchestratorTests
 
     public static IEnumerable<object[]> InvalidLoanAmountsAndTerms()
     {
-        yield return new object[] { null, 12 };
         yield return new object[] { 0M, 12 };
         yield return new object[] { -0.01M, 12 };
         yield return new object[] { 1000M, 11 };
-        yield return new object[] { 1000M, null };
     }
     
     public ApplicationOrchestratorTests()
@@ -43,7 +41,7 @@ public class ApplicationOrchestratorTests
             .Verifiable();
 
         _applicationStore.Setup(x => x.CreateApplication(It.IsAny<Guid>(), It.Is<Guid>(y => y == codatCompanyId)))
-            .Returns(new ApplicationForm { Id = applicationId, CodatCompanyId = codatCompanyId })
+            .Returns(new Application { Id = applicationId, CodatCompanyId = codatCompanyId })
             .Verifiable();
 
         var application = await _orchestrator.CreateApplicationAsync();
@@ -57,43 +55,48 @@ public class ApplicationOrchestratorTests
     [Fact]
     public async Task SubmitApplicationDetails_passes_expected_fields_to_application_store()
     {
+        var applicationId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
         var form = new ApplicationForm
         {
-            Id = Guid.NewGuid(), 
             CompanyName = "Test Company", 
             FullName = "John Smith", 
             LoanAmount = 10000,
             LoanTerm = 36,
             LoanPurpose = "Growth marketing"
         };
+
+        var application = new Application()
+        {
+            Id = applicationId,
+            CodatCompanyId = companyId,
+            Status = ApplicationStatus.Started,
+            Form = form
+        };
         
-        _applicationStore.Setup(x => x.SetApplicationDetails(
-                It.Is<Guid>(y => y == form.Id), 
-                It.Is<string>(y => y == form.CompanyName), 
-                It.Is<string>(y => y == form.FullName), 
-                It.Is<string>(y => y == form.LoanPurpose), 
-                It.Is<decimal>(y => y == form.LoanAmount), 
-                It.Is<int>(y => y == form.LoanTerm)))
+        _applicationStore.Setup(x => x.SetApplicationForm(
+                It.Is<Guid>(y => y == applicationId),
+                It.Is<ApplicationForm>(y => y == form)))
             .Verifiable();
 
         _applicationStore.Setup(x =>
-            x.UpdateApplicationStatus(It.Is<Guid>(y => y == form.Id), It.Is<ApplicationStatus>(y => y == ApplicationStatus.CollectingData)))
+            x.UpdateApplicationStatus(It.Is<Guid>(y => y == applicationId), It.Is<ApplicationStatus>(y => y == ApplicationStatus.CollectingData)))
             .Verifiable();
 
-        _applicationStore.Setup(x => x.GetApplication(It.Is<Guid>(y => y == form.Id)))
-            .Returns(form)
+        _applicationStore.Setup(x => x.GetApplication(It.Is<Guid>(y => y == applicationId)))
+            .Returns(application)
             .Verifiable();
 
-        _applicationStore.Setup(x => x.GetApplicationStatus(It.Is<Guid>(y => y == form.Id)))
+        _applicationStore.Setup(x => x.GetApplicationStatus(It.Is<Guid>(y => y == applicationId)))
             .Returns(ApplicationStatus.CollectingData)
             .Verifiable();
 
         _applicationStore.Setup(x => x.AddFulfilledRequirementForCompany(
-                It.Is<Guid>(y => y == form.CodatCompanyId),
+                It.Is<Guid>(y => y == companyId),
                 It.Is<ApplicationDataRequirements>(y => y == ApplicationDataRequirements.ApplicationDetails)))
             .Verifiable();
 
-        await _orchestrator.SubmitApplicationDetailsAsync(form);
+        await _orchestrator.SubmitApplicationDetailsAsync(applicationId, form);
 
         VerifyApplicationStore();
         VerifyCodatClient();
@@ -102,18 +105,18 @@ public class ApplicationOrchestratorTests
     
     [Theory]
     [MemberData(nameof(InvalidLoanAmountsAndTerms))]
-    public void SubmitApplicationDetailsAsync_throws_ApplicationOrchestratorException_when_loan_amount_or_term_is_invalid(decimal? loanAmount, int? loanTerm)
+    public void SubmitApplicationDetailsAsync_throws_ApplicationOrchestratorException_when_loan_amount_or_term_is_invalid(decimal loanAmount, int loanTerm)
     {
+        var applicationId = Guid.NewGuid();
         var form = new ApplicationForm
         {
-            Id = Guid.NewGuid(),
             CompanyName = "Test Company",
             FullName = "John Smith", 
             LoanAmount = loanAmount, 
             LoanTerm = loanTerm
         };
         
-        var action = () => _orchestrator.SubmitApplicationDetailsAsync(form);
+        var action = () => _orchestrator.SubmitApplicationDetailsAsync(applicationId, form);
         action.Should()
             .ThrowAsync<ApplicationOrchestratorException>()
             .WithMessage("Loan amount and/or term is invalid. Amount have a positive, non-zero value. Term must be at least 12 months");
@@ -167,7 +170,7 @@ public class ApplicationOrchestratorTests
             .Verifiable();
 
         _applicationStore.Setup(x => x.GetApplicationByCompanyId(It.Is<Guid>(y => y == codatCompanyId)))
-            .Returns(new ApplicationForm { Id = applicationId, CodatCompanyId = codatCompanyId })
+            .Returns(new Application { Id = applicationId, CodatCompanyId = codatCompanyId })
             .Verifiable();
         
         _applicationStore.Setup(x => x.UpdateApplicationStatus(
@@ -195,11 +198,11 @@ public class ApplicationOrchestratorTests
         var codatCompanyId = Guid.NewGuid();
         var dataConnectionId = Guid.NewGuid();
         
-        var application = new ApplicationForm
+        var application = new Application
         {
             Id = Guid.NewGuid(),
             CodatCompanyId = codatCompanyId,
-            AccountingConnection = new DataConnection { Id = dataConnectionId }
+            AccountingConnection = dataConnectionId
         };
 
         _applicationStore.Setup(x => x.GetApplicationByCompanyId(It.Is<Guid>(y => y == codatCompanyId)))
@@ -236,7 +239,7 @@ public class ApplicationOrchestratorTests
         var codatCompanyId = Guid.NewGuid();
 
         _applicationStore.Setup(x => x.GetApplicationByCompanyId(It.Is<Guid>(y => y == codatCompanyId)))
-            .Returns(new ApplicationForm
+            .Returns(new Application
             {
                 Id = Guid.NewGuid(),
                 CodatCompanyId = codatCompanyId,
@@ -260,11 +263,11 @@ public class ApplicationOrchestratorTests
         var codatCompanyId = Guid.NewGuid();
 
         _applicationStore.Setup(x => x.GetApplicationByCompanyId(It.Is<Guid>(y => y == codatCompanyId)))
-            .Returns(new ApplicationForm
+            .Returns(new Application
             {
                 Id = Guid.NewGuid(),
                 CodatCompanyId = codatCompanyId,
-                AccountingConnection = new DataConnection{ Id = Guid.NewGuid() }
+                AccountingConnection = Guid.NewGuid()
             })
             .Verifiable();
 
@@ -289,11 +292,11 @@ public class ApplicationOrchestratorTests
         var codatCompanyId = Guid.NewGuid();
         var dataConnectionId = Guid.NewGuid();
 
-        var application = new ApplicationForm
+        var application = new Application
         {
             Id = Guid.NewGuid(),
             CodatCompanyId = codatCompanyId,
-            AccountingConnection = new DataConnection { Id = dataConnectionId },
+            AccountingConnection = dataConnectionId,
             Requirements = { ApplicationDataRequirements.AccountsClassified }
         };
         
@@ -336,13 +339,16 @@ public class ApplicationOrchestratorTests
         var dataConnectionId = Guid.NewGuid();
         var underwritingOutcome = ApplicationStatus.Accepted;
 
-        var application = new ApplicationForm
+        var application = new Application
         {
             Id = Guid.NewGuid(),
             CodatCompanyId = codatCompanyId,
-            AccountingConnection = new DataConnection { Id = dataConnectionId },
-            LoanAmount = 10000m,
-            LoanTerm = 36
+            AccountingConnection = dataConnectionId,
+            Form = new()
+            {
+                LoanAmount = 10000m,
+                LoanTerm = 36
+            }
         };
         application.Requirements.AddRange(Enum.GetValues(typeof(ApplicationDataRequirements)).Cast<ApplicationDataRequirements>());
         
@@ -375,8 +381,8 @@ public class ApplicationOrchestratorTests
         
         _underwriter
             .Setup(x => x.Process(
-                It.Is<decimal>(y => y == application.LoanAmount.Value),
-                It.Is<int>(y => y == application.LoanTerm),
+                It.Is<decimal>(y => y == application.Form.LoanAmount),
+                It.Is<int>(y => y == application.Form.LoanTerm),
                 It.IsAny<Report>(), 
                 It.IsAny<Report>()))
             .Returns(underwritingOutcome)
@@ -401,13 +407,16 @@ public class ApplicationOrchestratorTests
         var dataConnectionId = Guid.NewGuid();
         var underwritingOutcome = ApplicationStatus.Accepted;
 
-        var application = new ApplicationForm
+        var application = new Application
         {
             Id = Guid.NewGuid(),
             CodatCompanyId = codatCompanyId,
-            AccountingConnection = new DataConnection { Id = dataConnectionId },
-            LoanAmount = 10000m,
-            LoanTerm = 36
+            AccountingConnection = dataConnectionId,
+            Form = new()
+            {
+                LoanAmount = 10000m,
+                LoanTerm = 36
+            }
         };
         application.Requirements.AddRange(Enum.GetValues(typeof(ApplicationDataRequirements)).Cast<ApplicationDataRequirements>());
         
@@ -442,8 +451,8 @@ public class ApplicationOrchestratorTests
         
         _underwriter
             .Setup(x => x.Process(
-                It.Is<decimal>(y => y == application.LoanAmount.Value),
-                It.Is<int>(y => y == application.LoanTerm),
+                It.Is<decimal>(y => y == application.Form.LoanAmount),
+                It.Is<int>(y => y == application.Form.LoanTerm),
                 It.IsAny<Report>(),
                 It.IsAny<Report>()))
             .Returns(underwritingOutcome)
@@ -460,21 +469,21 @@ public class ApplicationOrchestratorTests
         VerifyCodatClient();
     }
 
-    private void SetupCodatDataClientWithMetrics(ApplicationForm application)
+    private void SetupCodatDataClientWithMetrics(Application application)
     => _codatDataClient
             .Setup(x => x.GetPreviousTwelveMonthsMetricsAsync(
                 It.Is<Guid>(y => y == application.CodatCompanyId),
-                It.Is<Guid>(y => y == application.AccountingConnection!.Id),
+                It.Is<Guid>(y => y == application.AccountingConnection),
                 It.Is<DateTime>(y => y == application.DateCreated)))
             .ReturnsAsync(new FinancialMetrics())
             .Verifiable();
 
-    private void SetupCodatDataClientWithVerifiableFinancialRequests(ApplicationForm application)
+    private void SetupCodatDataClientWithVerifiableFinancialRequests(Application application)
     {
         _codatDataClient
             .Setup(x => x.GetPreviousTwelveMonthsEnhancedProfitAndLossAsync(
                 It.Is<Guid>(y => y == application.CodatCompanyId),
-                It.Is<Guid>(y => y == application.AccountingConnection!.Id),
+                It.Is<Guid>(y => y == application.AccountingConnection),
                 It.Is<DateTime>(y => y == application.DateCreated)))
             .ReturnsAsync(new Report())
             .Verifiable();
@@ -482,7 +491,7 @@ public class ApplicationOrchestratorTests
         _codatDataClient
             .Setup(x => x.GetPreviousTwelveMonthsEnhancedBalanceSheetAsync(
                 It.Is<Guid>(y => y == application.CodatCompanyId),
-                It.Is<Guid>(y => y == application.AccountingConnection!.Id),
+                It.Is<Guid>(y => y == application.AccountingConnection),
                 It.Is<DateTime>(y => y == application.DateCreated)))
             .ReturnsAsync(new Report())
             .Verifiable();
