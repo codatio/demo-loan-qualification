@@ -1,4 +1,7 @@
-﻿# Introduction
+# demo-lending
+
+## Introduction
+
 This project shows how you can integrate Codat into an automated underwriting web application.
 The project is implemented in [.NET 7.0](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) as a backend API that uses features of Codat's [Assess](https://docs.codat.io/docs/assess-overview?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo) product.
 
@@ -9,13 +12,14 @@ You'll learn how to:
 
 > NOTE: We use an example underwriting model to highlight how you can use Codat to fully automate a loan for SMBs.
 
-# Prerequisites
+## Prerequisites
+
 You need these to run and test the code locally: 
 - A Codat account that you can [create for free](https://signup.codat.io/?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo)
 - Your Codat [API keys](https://app.codat.io/developers/api-keys?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo)
 - A way to access remote systems from your locally hosted server (we used [ngrok](https://ngrok.com/))
 
-# Getting started
+## Getting started
 
 To run the underwriting demo app: 
 1. Add your API key (`CodatApiKey`) and local machine's publicly available base url (`BaseWebhookUrl`) to the `appSettings.json` file.
@@ -38,7 +42,7 @@ To run the underwriting demo app:
 }
 ```
 
-# Implementing the solution
+## Implementing the solution
 
 The underwriting model we use in the demo requires the following data about the company and the borrower:
 - Validated application details
@@ -97,7 +101,7 @@ sequenceDiagram
     end
 ```
 
-## Applying for a loan
+### Applying for a loan
 
 We begin when the prospect initiates a new loan application by calling the `application/start` endpoint. It returns an 
 application id, which we then use as the company name to create a Company using Codat's `POST /companies` endpoint. 
@@ -107,7 +111,7 @@ When the new Codat company is created, the company and application ids are store
 
 We also store the date the application was created to use as a reference date later.
 
-### Example response returned by the `start` endpoint
+#### Example response returned by the `start` endpoint
 
 ```json
 {
@@ -133,7 +137,7 @@ system and enables the submission of details and connection of a company to be p
 
 Upon acknowledgement of the receipt, we check on the data requirements to assess if the application can be underwritten. 
 
-## Listening to Codat's webhooks
+### Listening to Codat's webhooks
 
 When the prospective borrower's accounting platform is connected, the remaining steps will update the data requirements of the application.
 These are activated by Codat's webhooks that trigger specific `POST` endpoints in our example app:
@@ -153,14 +157,14 @@ It looks for any updates occuring when accounts are categorized according to Cod
 automatic categorization, or when someone manually categorizes accounts the engine was unable to reliably define. Then, we make a call to Codat's enhanced profit and loss API to 
 check that there are no `UncategorizedAccounts` errors do not contain any of type. If passed, the final data requirement is confirmed. 
 
-## Using Assess' enhanced financials
+### Using Assess' enhanced financials
 
 First, we fetch the enhanced Profit and Loss statement and enhanced Balance Sheet for analysis.
 Both endpoints require a `reportDate`, `periodLength`, and `numberOfPeriods` as query parameters.
 The application's `createdDate` is used where the year and previous month are set as the `reportDate`. This ensures that a full year of financial data is returned by Codat.
 In addition, `includeDisplayNames` parameter is set to true in the request because it allows accounts to be accessed via Codat's standardized taxonomy display names.
 
-## Underwriting the loan
+### Underwriting the loan
 
 Once both enhanced data types have been fetched, they are passed to the [LoanUnderwriter](Codat.Demos.Underwriting.Api/Services/LoanUnderwriter.cs) service
 together with the application's loan amount and term length. This is to perform an assessment of the prospective borrower's credit worthiness.
@@ -168,5 +172,4 @@ together with the application's loan amount and term length. This is to perform 
 The LoanUnderwriter service returns a status of Accepted/Rejected when a loan is successfully underwritten, or UnderwritingFailure in the event of any programmatic failure.
 The underwriting model we use as our example is a rules-based model that requires thresholds to be passed for growth profit margin, revenue, and gearing ratio. 
 
-> Reach out to [developer-experience@codat.io](mailto:developer-experience@codat.io) with any questions or feedback on the example app.
-
+🗣️ Anything unclear in this guide? Got feedback? We're working on a whole host of new content for you, so [let us know](https://github.com/orgs/codatio/discussions/new?category=general).
