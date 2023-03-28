@@ -1,4 +1,4 @@
-# demo-lending
+# demo-loan-qualification
 
 ## Introduction
 
