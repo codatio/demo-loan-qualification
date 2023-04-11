@@ -125,7 +125,7 @@ We also store the date the application was created to use as a reference date la
 
 Once the prospective borrower receives the application and Codat company id, they should complete the application details and link their
 accounting platform. They can: 
-- Pass the `codatCompanyId` to [embedded link](https://docs.codat.io//auth-flow/authorize-embedded-link?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo), or
+- Pass the `codatCompanyId` to [embedded link](https://docs.codat.io/auth-flow/authorize-embedded-link?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo), or
 - Use the `linkUrl`.
 
 
