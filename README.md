@@ -3,7 +3,7 @@
 ## Introduction
 
 This project shows how you can integrate Codat into an automated underwriting web application.
-The project is implemented in [.NET 7.0](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) as a backend API that uses features of Codat's [Assess](https://docs.codat.io/docs/assess-overview?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo) product.
+The project is implemented in [.NET 7.0](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) as a backend API that uses features of Codat's [Assess](https://docs.codat.io/docs/assess/overview?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo) product.
 
 You'll learn how to:
 - Create a test Company via API.
@@ -125,7 +125,7 @@ We also store the date the application was created to use as a reference date la
 
 Once the prospective borrower receives the application and Codat company id, they should complete the application details and link their
 accounting platform. They can: 
-- Pass the `codatCompanyId` to [embedded link](https://docs.codat.io/docs/authorize-embedded-link?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo), or
+- Pass the `codatCompanyId` to [embedded link](https://docs.codat.io//auth-flow/authorize-embedded-link?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo), or
 - Use the `linkUrl`.
 
 
@@ -141,17 +141,17 @@ Upon acknowledgement of the receipt, we check on the data requirements to assess
 
 When the prospective borrower's accounting platform is connected, the remaining steps will update the data requirements of the application.
 These are activated by Codat's webhooks that trigger specific `POST` endpoints in our example app:
-* `webhooks/codat/data-connection-status` listens to the [DataConnectionStatusChanged](https://docs.codat.io/docs/core-rules-types#company-data-connection-status-changed?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo) webhook.
+* `webhooks/codat/data-connection-status` listens to the [DataConnectionStatusChanged](https://docs.codat.io/introduction/webhooks/core-rules-types#company-data-connection-status-changed?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo) webhook.
 
 It verifies that the received data connection is an accounting platform, and assigns it to the related application via the Codat company id. 
 It also checks that the accounting data connection's `newStatus` is `Linked` in order to set the application status to `CollectingData`.
 
-* `webhooks/codat/datatype-sync-complete` listens to the [Data sync completed](https://docs.codat.io/docs/core-rules-types#data-sync-completed?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo) webhook.
+* `webhooks/codat/datatype-sync-complete` listens to the [Data sync completed](https://docs.codat.io/introduction/webhooks/core-rules-types#data-sync-completed?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo) webhook.
 
 It verifies the successful fetching of the `chartOfAccounts`, `balanceSheet`, and `profitAndLoss` data types from the underlying platform. It checks each data type to ensure that they 
 relate to the accounting connection id before the requirements are updated as fulfilled.
 
-* `webhooks/codat/account-categorisation-update` listens to the [account-categories-updated](https://docs.codat.io/docs/core-rules-types#account-categories-updated?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo) webhook.
+* `webhooks/codat/account-categorisation-update` listens to the [account-categories-updated](https://docs.codat.io/introduction/webhooks/core-rules-types#account-categories-updated?utm_medium=referral&utm_source=linked_website&utm_campaign=2023_github_underwriting_code_demo) webhook.
 
 It looks for any updates occuring when accounts are categorized according to Codat's standardized financial taxonomy. The webhook is delivered when the categorization engine completes
 automatic categorization, or when someone manually categorizes accounts the engine was unable to reliably define. Then, we make a call to Codat's enhanced profit and loss API to 
