@@ -1,8 +1,11 @@
-﻿using Codat.Demos.Underwriting.Api.DataClients;
+﻿using System.Net;
 using Codat.Demos.Underwriting.Api.Exceptions;
 using Codat.Demos.Underwriting.Api.Extensions;
 using Codat.Demos.Underwriting.Api.Models;
 using Codat.Demos.Underwriting.Api.Services;
+using CodatLending;
+using CodatLending.Models.Shared;
+using CodatPlatform;
 
 namespace Codat.Demos.Underwriting.Api.Orchestrators;
 
@@ -21,23 +24,35 @@ public interface IApplicationOrchestrator
 public class ApplicationOrchestrator : IApplicationOrchestrator
 {
     private readonly IApplicationStore _applicationStore;
-    private readonly ICodatDataClient _codatDataClient;
+    private readonly ICodatLendingSDK _codatLending;
+    private readonly ICodatPlatformSDK _codatPlatform;
     private readonly ILoanUnderwriter _underwriter;
     private readonly List<string> _accountingPlatformKeys = new();
     private static readonly ApplicationDataRequirements[] ApplicationRequirements = Enum.GetValues(typeof(ApplicationDataRequirements)).Cast<ApplicationDataRequirements>().ToArray();
 
-    public ApplicationOrchestrator(IApplicationStore applicationStore, ICodatDataClient codatDataClient, ILoanUnderwriter underwriter)
+    public ApplicationOrchestrator(IApplicationStore applicationStore, ICodatLendingSDK codatLending, ICodatPlatformSDK codatPlatform, ILoanUnderwriter underwriter)
     {
         _applicationStore = applicationStore;
-        _codatDataClient = codatDataClient;
+        _codatLending = codatLending;
+        _codatPlatform = codatPlatform;
         _underwriter = underwriter;
     }
 
     public async Task<NewApplicationDetails> CreateApplicationAsync()
     {
         var applicationId = Guid.NewGuid();
-        var company = await _codatDataClient.CreateCompanyAsync(applicationId.ToString());
-        return _applicationStore.CreateApplication(applicationId, company.Id);
+        var companyResponse = await _codatLending.Companies.CreateAsync(new(){ Name = applicationId.ToString() });
+        
+        if (companyResponse.StatusCode != (int)HttpStatusCode.OK)//HttpStatus
+        {
+            if (companyResponse.ErrorMessage is null)
+            {
+                throw new ApplicationOrchestratorException("Failed to create company");
+            }
+            throw new ApplicationOrchestratorException(
+                $"Failed to create company for the following reason {companyResponse.ErrorMessage.Error}");
+        }
+        return _applicationStore.CreateApplication(applicationId, companyResponse.Company!.Id.ToGuid());
     }
 
     public async Task SubmitApplicationDetailsAsync(Guid applicationId, ApplicationForm form)
@@ -110,19 +125,13 @@ public class ApplicationOrchestrator : IApplicationOrchestrator
         await TryUnderwriteLoanAsync(application.Id);
     }
 
-    public async Task UpdateAccountCategorisationStatusAsync(CodatAccountCategorisationAlert alert)
+    public Task UpdateAccountCategorisationStatusAsync(CodatAccountCategorisationAlert alert)
     {
         var application = _applicationStore.GetApplicationByCompanyId(alert.CompanyId);
 
-        //Easiest way to check if the accounts are classified is to call the financial metrics endpoint!
-        var results = await GetFinancialMetrics(application);
+        _applicationStore.AddFulfilledRequirementForCompany(application.CodatCompanyId, ApplicationDataRequirements.AccountsClassified);
 
-        if (results.Metrics.SafeSelectMany(x => x.Errors).All(x => x.Type != "UncategorizedAccounts"))
-        {
-            _applicationStore.AddFulfilledRequirementForCompany(application.CodatCompanyId, ApplicationDataRequirements.AccountsClassified);
-        }
-
-        await TryUnderwriteLoanAsync(application.Id);
+        return TryUnderwriteLoanAsync(application.Id);
     }
     
     private static ApplicationDataRequirements? GetRequirementByDataType(string dataType)
@@ -133,7 +142,6 @@ public class ApplicationOrchestrator : IApplicationOrchestrator
             "profitAndLoss" => ApplicationDataRequirements.ProfitAndLoss, 
             _ => null 
         };
-    
     
     private async Task TryUnderwriteLoanAsync(Guid id)
     {
@@ -170,46 +178,62 @@ public class ApplicationOrchestrator : IApplicationOrchestrator
         }
     }
 
-    private async Task<(Report profitAndLoss, Report balanceSheet)> GetFinancialDataAsync(Application application)
+    private async Task<(FinancialStatement profitAndLoss, FinancialStatement balanceSheet)> GetFinancialDataAsync(Application application)
     {
-        var profitAndLossTask = _codatDataClient.GetPreviousTwelveMonthsEnhancedProfitAndLossAsync(
-            application.CodatCompanyId,
-            application.AccountingConnection!.Value,
-            application.DateCreated);
+        var reportDate = $"01-{application.DateCreated.AddMonths(-1):MM-yyyy}";
+        var numberOfPeriods = 12;
         
-        var balanceSheetTask = _codatDataClient.GetPreviousTwelveMonthsEnhancedBalanceSheetAsync(
-            application.CodatCompanyId,
-            application.AccountingConnection!.Value,
-            application.DateCreated);
-
+        var profitAndLossTask = _codatLending.FinancialStatements.ProfitAndLoss.GetCategorizedAccountsAsync(new()
+        {
+            CompanyId = application.CodatCompanyId.ToString(),
+            NumberOfPeriods = numberOfPeriods,//I assume periods means months.
+            ReportDate = reportDate
+        });
+        
+        var balanceSheetTask = _codatLending.FinancialStatements.BalanceSheet.GetCategorizedAccountsAsync(new()
+        {
+            CompanyId = application.CodatCompanyId.ToString(),
+            NumberOfPeriods = numberOfPeriods,//I assume periods means months.
+            ReportDate = reportDate
+        });
+        
         await Task.WhenAll(profitAndLossTask, balanceSheetTask);
 
-        return (profitAndLossTask.Result, balanceSheetTask.Result);
+        var profitAndLoss = MapToFinancialStatement(profitAndLossTask.Result.EnhancedFinancialReport, FinancialStatementType.ProfitAndLoss);
+        var balanceSheet = MapToFinancialStatement(balanceSheetTask.Result.EnhancedFinancialReport, FinancialStatementType.BalanceSheet);
+        
+        return (profitAndLoss, balanceSheet);
     }
 
     private async Task<bool> IsAccountingPlatformAsync(string platformKey)
     {
         if (_accountingPlatformKeys.Count == 0)
         {
-            var platforms = await _codatDataClient.GetAccountingPlatformsAsync();
-            _accountingPlatformKeys.AddRange(platforms.Select(x => x.Key));
+            var request = await _codatPlatform.Integrations.ListAsync(new()
+            {
+                Query = "sourceType=Accounting"
+            });
+
+            if (request.Integrations?.Results != null)
+            {
+                _accountingPlatformKeys.AddRange(request.Integrations.Results.Select(x => x.Key));
+            }
         }
 
         return _accountingPlatformKeys.Contains(platformKey);
     }
 
-    private async Task<FinancialMetrics> GetFinancialMetrics(Application application)
-    {
-        if (application.AccountingConnection is null)
+    private static FinancialStatement MapToFinancialStatement(EnhancedFinancialReport report, FinancialStatementType statementType)
+        => new()
         {
-            throw new ApplicationOrchestratorException($"No accounting data connection registered for application id {application.Id}");
-        }
-        
-        var results = await _codatDataClient.GetPreviousTwelveMonthsMetricsAsync(
-            application.CodatCompanyId,
-            application.AccountingConnection!.Value,
-            application.DateCreated);
-
-        return results;
-    }
+            Type = statementType,
+            Lines = report.ReportItems.Select(x =>
+                new FinancialStatementLine
+                {
+                    AccountCategorization = string.Join(".", x.AccountCategory.Levels.Select(y => y.LevelName)),
+                    Balance = x.Balance ?? Decimal.Zero,
+                    Date = Convert.ToDateTime(x.Date)
+                }
+            ).ToArray()
+        };
 }

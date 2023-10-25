@@ -12,12 +12,10 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <PackageReference Include="Codat.Lending" Version="4.3.0" />
+    <PackageReference Include="Codat.Platform" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Controllers\" />
   </ItemGroup>
 
 </Project>

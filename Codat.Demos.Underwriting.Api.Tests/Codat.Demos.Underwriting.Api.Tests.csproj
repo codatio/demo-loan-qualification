@@ -11,6 +11,8 @@
     <ProjectReference Include="..\Codat.Demos.Underwriting.Api\Codat.Demos.Underwriting.Api.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Codat.Lending" Version="4.3.0" />
+    <PackageReference Include="Codat.Platform" Version="2.2.0" />
     <PackageReference Include="FluentAssertions" Version="6.8.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.4.1" />
     <PackageReference Include="Moq" Version="4.18.4" />
