@@ -186,14 +186,14 @@ public class ApplicationOrchestrator : IApplicationOrchestrator
         var profitAndLossTask = _codatLending.FinancialStatements.ProfitAndLoss.GetCategorizedAccountsAsync(new()
         {
             CompanyId = application.CodatCompanyId.ToString(),
-            NumberOfPeriods = numberOfPeriods,//I assume periods means months.
+            NumberOfPeriods = numberOfPeriods,
             ReportDate = reportDate
         });
         
         var balanceSheetTask = _codatLending.FinancialStatements.BalanceSheet.GetCategorizedAccountsAsync(new()
         {
             CompanyId = application.CodatCompanyId.ToString(),
-            NumberOfPeriods = numberOfPeriods,//I assume periods means months.
+            NumberOfPeriods = numberOfPeriods,
             ReportDate = reportDate
         });
         
