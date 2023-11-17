@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using Codat.Demos.Underwriting.Api.DataClients;
 using Codat.Demos.Underwriting.Api.Exceptions;
 using Codat.Demos.Underwriting.Api.Models;
 using Codat.Demos.Underwriting.Api.Orchestrators;
@@ -22,7 +21,6 @@ public static class BindingModule
         services.Configure<UnderwritingParameters>(configuration.GetSection("AppSettings:UnderwritingParameters"));
         
         services.AddSingleton<IApplicationStore, ApplicationStore>();
-        services.AddSingleton<ICodatDataClient, CodatDataClient>();
         services.AddSingleton<IApplicationOrchestrator, ApplicationOrchestrator>();
         services.AddSingleton<ILoanUnderwriter, LoanUnderwriter>();
 

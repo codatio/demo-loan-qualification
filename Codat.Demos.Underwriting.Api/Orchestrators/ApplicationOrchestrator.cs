@@ -41,7 +41,7 @@ public class ApplicationOrchestrator : IApplicationOrchestrator
     public async Task<NewApplicationDetails> CreateApplicationAsync()
     {
         var applicationId = Guid.NewGuid();
-        var companyResponse = await _codatLending.Companies.CreateAsync(new(){ Name = applicationId.ToString() });
+        var companyResponse = await _codatPlatform.Companies.CreateAsync(new(){ Name = applicationId.ToString() });
         
         if (companyResponse.StatusCode != (int)HttpStatusCode.OK)//HttpStatus
         {
@@ -199,8 +199,8 @@ public class ApplicationOrchestrator : IApplicationOrchestrator
         
         await Task.WhenAll(profitAndLossTask, balanceSheetTask);
 
-        var profitAndLoss = MapToFinancialStatement(profitAndLossTask.Result.EnhancedFinancialReport, FinancialStatementType.ProfitAndLoss);
-        var balanceSheet = MapToFinancialStatement(balanceSheetTask.Result.EnhancedFinancialReport, FinancialStatementType.BalanceSheet);
+        var profitAndLoss = MapToFinancialStatement(profitAndLossTask.Result.EnhancedFinancialReport ?? new EnhancedFinancialReport(), FinancialStatementType.ProfitAndLoss);
+        var balanceSheet = MapToFinancialStatement(balanceSheetTask.Result.EnhancedFinancialReport ?? new EnhancedFinancialReport(), FinancialStatementType.BalanceSheet);
         
         return (profitAndLoss, balanceSheet);
     }
@@ -227,11 +227,11 @@ public class ApplicationOrchestrator : IApplicationOrchestrator
         => new()
         {
             Type = statementType,
-            Lines = report.ReportItems.Select(x =>
+            Lines = (report.ReportItems ?? new List<EnhancedFinancialReportReportItem>()).Select(x =>
                 new FinancialStatementLine
                 {
-                    AccountCategorization = string.Join(".", x.AccountCategory.Levels.Select(y => y.LevelName)),
-                    Balance = x.Balance ?? Decimal.Zero,
+                    AccountCategorization = string.Join(".", (x.AccountCategory?.Levels ?? new List<AccountCategoryLevel>()).Select(y => y.LevelName)),
+                    Balance = x.Balance ?? decimal.Zero,
                     Date = Convert.ToDateTime(x.Date)
                 }
             ).ToArray()
