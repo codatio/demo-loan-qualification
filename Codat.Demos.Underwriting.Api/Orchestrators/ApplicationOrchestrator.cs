@@ -209,14 +209,14 @@ public class ApplicationOrchestrator : IApplicationOrchestrator
     {
         if (_accountingPlatformKeys.Count == 0)
         {
-            var request = await _codatPlatform.Integrations.ListAsync(new()
+            var response = await _codatPlatform.Integrations.ListAsync(new()
             {
                 Query = "sourceType=Accounting"
             });
-
-            if (request.Integrations?.Results != null)
+            
+            if (response.Integrations?.Results != null)
             {
-                _accountingPlatformKeys.AddRange(request.Integrations.Results.Select(x => x.Key));
+                _accountingPlatformKeys.AddRange(response.Integrations.Results.Select(x => x.Key));
             }
         }
 
